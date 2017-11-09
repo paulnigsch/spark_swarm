@@ -1,0 +1,118 @@
+version: '3'
+
+services:
+
+  #############################################
+  # slave nodes 
+  spark_master:
+    #build: spark_docker
+    image: paulnzat/spark_swarm
+
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "7077:7077"
+      
+    environment:
+      SPARK_NO_DAEMONIZE: '1'
+
+    command: ./sbin/start-master.sh 
+
+    networks:
+      spark_net: 
+        ipv4_address: 172.16.238.10
+        # ipv6_address: 2001:3984:3989::10
+        aliases:
+          - master
+
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == ubuntu
+  
+
+
+  #############################################
+  # slave nodes 
+  spark_slave:
+    #build: spark_docker
+    image: paulnzat/spark_swarm
+
+    depends_on:
+      - spark_master
+    
+    environment:
+      SPARK_NO_DAEMONIZE: '1'
+
+    command: bash -c './sbin/start-slave.sh spark://$$(dig +short spark_master):7077'
+
+    networks:
+      - spark_net 
+
+
+    deploy:
+      placement:
+        constraints:
+          - node.hostname != ubuntu
+          #- reserve_memory == 200Mb
+      mode: replicated
+      replicas: 2
+
+#  #############################################
+#  # test img
+#  testimg2:
+#    image: alpine 
+# 
+#    depends_on:
+#      - spark_master
+# 
+#    command: sleep 1000000
+#    networks:
+#      - spark_net
+# 
+#    deploy:
+#      placement:
+#        constraints:
+#          - node.hostname == worker1 
+# 
+# 
+# 
+#  #############################################
+#  # test img
+#  testimg3:
+#    image: alpine 
+# 
+#    depends_on:
+#      - spark_master
+# 
+#    command: sleep 1000000
+#    networks:
+#      - spark_net
+# 
+#    deploy:
+#      placement:
+#        constraints:
+#          - node.hostname == worker2 
+# 
+# 
+#  #############################################
+#  # test img
+#  testimg:
+#    image: paulnzat/spark_swarm
+#    ports:
+#      - "4040:4040"
+# 
+#    depends_on:
+#      - spark_master
+# 
+#    command: sleep 1000000
+#    networks:
+#      - spark_net
+# 
+#    deploy:
+#      placement:
+#        constraints:
+#          - node.hostname == ubuntu
+# 
+networks:
+  spark_net:
